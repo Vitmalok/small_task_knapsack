@@ -1,13 +1,25 @@
-template<typename point_type, typename score_type>
+#pragma once
+
+#include <vector>
+
+namespace abstract {
+
+template<typename Point, typename Distance, typename Score>
 class Task {
-    class point_iterator;
+public:
+    virtual Score impossible_score() = 0;
     
-    virtual score_type score(point_type x) = 0;
+    virtual Score score(const Point& x) = 0;
     
-    virtual point_iterator neighbourhood(point_type x) = 0;
+    virtual std::vector<Point> neighbourhood(const Point& x, Distance r) = 0;
+    
+    virtual Point random_point() = 0;
 };
 
-template<typename point_type, typename score_type>
+template<typename Point, typename Distance, typename Score>
 class Solver {
-    virtual solve(Task<point_type, score_type> task) = 0;
+public:
+    virtual Point solve(Distance step, Score tolerance, int max_iterations = -1) = 0;
 };
+
+}
