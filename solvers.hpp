@@ -1,12 +1,10 @@
 #pragma once
 
-#include "abstract.hpp"
 
 
-
-template<typename Point, typename Distance, typename Score>
-class Solver_local_1: public abstract::Solver<Point, Distance, Score> {
-    abstract::Task<Point, Distance, Score>& task;
+template <typename Task>
+class Solver_local {
+    Task& task;
     
     int done_iterations;
     bool tolerance_reached;
@@ -19,24 +17,24 @@ public:
         return tolerance_reached;
     }
     
-    Point point;
+    typename Task::Point point;
     
-    Solver_local_1(abstract::Task<Point, Distance, Score>& _task):
+    Solver_local(Task& _task):
         task(_task),
         done_iterations(0),
         tolerance_reached(false),
         point(_task.random_point())
-    {};
+    {}
     
-    virtual Point solve(Distance step, Score tolerance, int max_iterations) override {
-        Score s = task.score(point);
-        Score s_prev = task.impossible_score();
+    typename Task::Point solve(typename Task::Distance step, typename Task::Score tolerance, int max_iterations) {
+        typename Task::Score s = task.score(point);
+        typename Task::Score s_prev = task.impossible_score();
         
         int it = 0;
         while (it != max_iterations && s - s_prev > tolerance) {
             s_prev = s;
-            for (Point point_next : task.neighbourhood(point, step)) {
-                Score s_next = task.score(point_next);
+            for (typename Task::Point point_next : task.neighbourhood(point, step)) {
+                typename Task::Score s_next = task.score(point_next);
                 if (s < s_next) {
                     point = point_next;
                     s = s_next;
