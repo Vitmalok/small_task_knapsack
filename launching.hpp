@@ -7,13 +7,11 @@
 
 
 template <typename Task, typename Solver>
-void test(int max_iterations = 100, int number_of_launches = 1, int detail_level = 2) {
+void launch(int max_iterations = 100, int number_of_launches = 1, int detail_level = 2) {
     std::srand(std::time(nullptr));
     
     Task task;
     task.load(std::cin);
-    
-    std::cout << std::endl;
     
     typename Task::Score s_best = task.impossible_score();
     typename Task::Point x_best(task);
@@ -46,6 +44,9 @@ void test(int max_iterations = 100, int number_of_launches = 1, int detail_level
         }
     }
     
-    std::cout << std::endl << "Best point:" << std::endl;
+    if (detail_level >= 1) {
+        std::cout << std::endl;
+    }
+    std::cout << "Best point:" << std::endl;
     task.print_point_info(x_best);
 }
