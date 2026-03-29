@@ -7,7 +7,7 @@
 
 
 template <typename Task, typename Solver>
-void launch(int max_iterations = 100, int number_of_launches = 1, int detail_level = 2) {
+void launch(typename Task::Distance step, int max_iterations = 100, int number_of_launches = 1, int detail_level = 2) {
     std::srand(std::time(nullptr));
     
     Task task;
@@ -21,9 +21,9 @@ void launch(int max_iterations = 100, int number_of_launches = 1, int detail_lev
         Solver solver(task);
         
         if (detail_level >= 3) {
-            solver.solve_detailed(2, 0, max_iterations);
+            solver.solve_detailed(step, 0, max_iterations);
         } else {
-            solver.solve(2, 0, max_iterations);
+            solver.solve(step, 0, max_iterations);
         }
         
         if (detail_level >= 2) {

@@ -13,9 +13,9 @@
 
 
 
-const char* SHORT_OPTS = "d:i:n:";
+const char* SHORT_OPTS = "d:i:n:s:";
 
-const std::map<std::string, std::function<void(int, int, int)>> launchers {
+const std::map<std::string, std::function<void(double, int, int, int)>> launchers {
     {"knapsack", launch<knapsack::Task, Solver_local<knapsack::Task>>},
     {"tsp", launch<tsp::Task, Solver_local<tsp::Task>>},
 };
@@ -23,7 +23,7 @@ const std::map<std::string, std::function<void(int, int, int)>> launchers {
 
 
 void print_usage_str(std::ostream& os, const char* main_name) {
-    os << "Usage: " << main_name << " <task_name> [-d <detail_level>] [-i <max_iterations>] [-n <number_of_launches>]" << std::endl;
+    os << "Usage: " << main_name << " <task_name> [-d <detail_level>] [-i <max_iterations>] [-n <number_of_launches>] [-s <step>]" << std::endl;
 }
 void print_available_tasks(std::ostream& os) {
     os << "Available tasks: [";
@@ -54,13 +54,14 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     
-    const std::function<void(int, int, int)> launcher = (*it).second;
+    const std::function<void(double, int, int, int)> launcher = (*it).second;
     
     
     
     int detail_level = 0;
     int max_iterations = 100;
     int number_of_launches = 1;
+    double step = 2;
     
     int opt;
     optind = 2;
@@ -76,6 +77,9 @@ int main(int argc, char* argv[]) {
         case 'n':
             number_of_launches = atoi(optarg);
             break;
+        case 's':
+            step = atof(optarg);
+            break;
         default:
             std::cerr << "Unknown option \"" << optopt << "\"" << std::endl;
             print_usage_str(std::cerr, argv[0]);
@@ -85,7 +89,7 @@ int main(int argc, char* argv[]) {
     
     
     
-    launcher(max_iterations, number_of_launches, detail_level);
+    launcher(step, max_iterations, number_of_launches, detail_level);
     
     
     

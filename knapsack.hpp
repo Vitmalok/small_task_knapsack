@@ -219,13 +219,14 @@ public:
     Point random_point() {
         Point x(*this);
         int w;
-        int w_max = W/2;
+        int w_max = randint(W/2, W+1);
         
         int it = 0;
         while (it < N && (w = weight(x)) < w_max) {
             int i = randint(0, N);
             
-            if (!x.bits[i] && w + items[i].weight <= w_max) {
+            //if (!x.bits[i] && w + items[i].weight <= w_max) {
+            if (!x.bits[i]) {
                 x.bits[i] = true;
             }
             ++it;
