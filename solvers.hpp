@@ -35,12 +35,11 @@ public:
             s_prev = s;
             //std::cout << std::endl;
             //task.print_point_info(point);
-            for (const typename Task::Point& point_next : typename Task::Neighbourhood(task, point, step)) {
-                //task.print_point_info(point_next);
-                typename Task::Score s_next = task.score(point_next);
-                if (s <= s_next) {
-                    point = point_next;
-                    s = s_next;
+            for (std::pair<const typename Task::Point&, typename Task::Score> pair : typename Task::Neighbourhood(task, point, step)) {
+                //task.print_point_info(pair.first);
+                if (s < pair.second || s == pair.second && s == task.impossible_score()) {
+                    point = pair.first;
+                    s = pair.second;
                 }
             }
             ++it;

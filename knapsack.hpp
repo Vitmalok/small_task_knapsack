@@ -34,7 +34,7 @@ public:
     
     
     class Neighbourhood {
-        int N;
+        const Task& task;
         const Point& x;
         Distance r;
     public:
@@ -43,7 +43,7 @@ public:
         class Iterator {
             friend Neighbourhood;
             
-            int N;
+            const Task& task;
             const Point& x;
             Distance r;
             bool end;
@@ -52,24 +52,38 @@ public:
             int* indices;
             
             Point y;
+            Score s;  // Суммарный счёт, без учёта переполнения рюкзака
+            int w;
             
-            Iterator(int _N, const Point& _x, Distance _r, END):
-                N(_N), x(_x), r(_r), end(true),
+            Iterator(const Task& _task, const Point& _x, Distance _r, END):
+                task(_task), x(_x), r(_r), end(true),
                 k(_r), ii(-1), indices(nullptr),
-                y()
+                y(), s(), w()
             {}
+            
+            void change_bit(int i) {
+                if (y.bits[i]) {
+                    s -= task.items[i].score;
+                    w -= task.items[i].weight;
+                } else {
+                    s += task.items[i].score;
+                    w += task.items[i].weight;
+                }
+                y.bits[i] = !y.bits[i];
+            }
+            
         public:
-            Iterator(int _N, const Point& _x, Distance _r):
-                N(_N), x(_x), r(_r), end(false),
+            Iterator(const Task& _task, const Point& _x, Distance _r):
+                task(_task), x(_x), r(_r), end(false),
                 k(0), ii(-1), indices(nullptr),
-                y(x)
+                y(x), s(task.score(x, false)), w(task.weight(x))
             {}
             ~Iterator() {
                 delete[] indices;
             }
             
-            const Point& operator*() {
-                return y;
+            std::pair<const Point&, Score> operator*() {
+                return {y, (w > task.W ? task.impossible_score() : s)};
             }
             
             bool operator!=(const Iterator& other) {
@@ -78,13 +92,15 @@ public:
             
             const Iterator& operator++() {
                 ii = k-1;
-                while (ii >= 0 && indices[ii] + k - ii == N) {
+                while (ii >= 0 && indices[ii] + k - ii == task.N) {
                     --ii;
                 }
                 if (ii >= 0) {
                     int i = indices[ii] - ii + 1;
                     for (int jj=ii; jj<k; ++jj) {
+                        change_bit(indices[jj]);
                         indices[jj] = i + jj;
+                        change_bit(i + jj);
                     }
                 }
                 
@@ -95,16 +111,16 @@ public:
                         return *this;
                     }
                     
+                    for (ii=0; ii<k-1; ++ii) {
+                        change_bit(indices[ii]);
+                    }
+                    
                     delete[] indices;
                     indices = new int[k];
                     for (ii=0; ii<k; ++ii) {
                         indices[ii] = ii;
+                        change_bit(ii);
                     }
-                }
-                
-                y = x;
-                for (ii=0; ii<k; ++ii) {
-                    y.bits[indices[ii]] = !y.bits[indices[ii]];
                 }
                 
                 return *this;
@@ -113,16 +129,16 @@ public:
         
         
         
-        Neighbourhood(const Task& task, const Point& _x, Distance _r):
-            N(task.N), x(_x), r(_r)
+        Neighbourhood(const Task& _task, const Point& _x, Distance _r):
+            task(_task), x(_x), r(_r)
         {}
         
         Iterator begin() {
-            return Iterator(N, x, r);
+            return Iterator(task, x, r);
         }
         
         Iterator end() {
-            return Iterator(N, x, r, END());
+            return Iterator(task, x, r, END());
         }
         
         // Предыдущая реализация
@@ -145,7 +161,7 @@ public:
                     res.push_back(y);
                     
                     ii = k-1;
-                    while (ii >= 0 && indices[ii] + k - ii == N) {
+                    while (ii >= 0 && indices[ii] + k - ii == task.N) {
                         --ii;
                     }
                     if (ii >= 0) {
@@ -194,11 +210,11 @@ public:
     
     
     
-    Score impossible_score() {
+    Score impossible_score() const {
         return -1000000000;
     }
     
-    Score score(const Point& x) {
+    Score score(const Point& x, bool check_impossible=true) const {
         int s = 0;
         int w = 0;
         for (int i=0; i<N; ++i) {
@@ -210,13 +226,13 @@ public:
                 }
             }
         }
-        if (w > W) {
+        if (check_impossible && w > W) {
             return impossible_score();
         }
         return s;
     }
     
-    Point random_point() {
+    Point random_point() const {
         Point x(*this);
         int w;
         int w_max = randint(W/2, W+1);
@@ -237,7 +253,7 @@ public:
     
     
     
-    int weight(const Point& x) {
+    int weight(const Point& x) const {
         int w = 0;
         for (int i=0; i<N; ++i) {
             if (x.bits[i]) {
@@ -247,7 +263,7 @@ public:
         return w;
     }
     
-    void print_point_info(const Point& x) {
+    void print_point_info(const Point& x) const {
         for (int i=0; i<N; ++i) {
             std::cout << x.bits[i];
         }

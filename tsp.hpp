@@ -67,8 +67,8 @@ public:
                 y(x)
             {}
             
-            const Point& operator*() {
-                return y;
+            std::pair<const Point&, Score> operator*() {
+                return {y, task.score(y)};
             }
             
             bool operator!=(const Iterator& other) {
