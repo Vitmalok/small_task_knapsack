@@ -38,7 +38,7 @@ void print_available_tasks(std::ostream& os) {
 
 
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Expected task name" << std::endl;
         print_usage_str(std::cerr, argv[0]);

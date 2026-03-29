@@ -18,18 +18,152 @@ public:
     };
     
     class Point {
+        friend Task;
+        
         std::vector<int> indices;
+        
+        Point(): indices(0) {}
     public:
-        Point(Task& task): indices(task.N) {
+        Point(const Task& task): indices(task.N) {
             for (int i=0; i<task.N; ++i) {
                 indices[i] = i;
             }
         }
-        friend Task;
     };
     
     typedef int Distance;
     typedef double Score;
+    
+    
+    
+    class Neighbourhood {
+        const Task& task;
+        const Point& x;
+        Distance r;
+    public:
+        struct END {};
+        
+        class Iterator {
+            friend Neighbourhood;
+            
+            const Task& task;
+            const Point& x;
+            Distance r;
+            bool end;
+            
+            int i1, i2;
+            
+            Point y;
+            
+            Iterator(const Task& _task, const Point& _x, Distance _r, END):
+                task(_task), x(_x), r(_r), end(true),
+                i1(_task.N-1), i2(task.N),
+                y()
+            {}
+        public:
+            Iterator(const Task& _task, const Point& _x, Distance _r):
+                task(_task), x(_x), r(_r), end(false),
+                i1(1), i2(2),
+                y(x)
+            {}
+            
+            const Point& operator*() {
+                return y;
+            }
+            
+            bool operator!=(const Iterator& other) {
+                return !(end && other.end);
+            }
+            
+            const Iterator& operator++() {
+                if (r == 2) {  // 2-opt
+                    int ia, ib, ic, id;
+                    
+                    do {
+                        ++i2;
+                        if (i2 >= (i1 == 1 ? task.N-1 : task.N)) {
+                            ++i1;
+                            if (i1 >= task.N-1) {
+                                end = true;
+                                return *this;
+                            }
+                            i2 = i1+1;
+                        }
+                        
+                        ia = x.indices[i1-1];
+                        ib = x.indices[i1];
+                        ic = x.indices[i2];
+                        id = x.indices[(i2+1 == task.N ? 0 : i2+1)];
+                    } while (task.edge_length(ia, ib) + task.edge_length(ic, id) - task.edge_length(ia, ic) - task.edge_length(ib, id) < 0);
+                    
+                    y = x;
+                    int i=i1, j=i2;
+                    while (i < j) {
+                        std::swap(y.indices[i], y.indices[j]);
+                        ++i; --j;
+                    }
+                    
+                    return *this;
+                } else if (r == 3) {  // 3-opt
+                    //...
+                }
+                
+                end = true;
+                return *this;
+            }
+        };
+        
+        
+        
+        Neighbourhood(const Task& _task, const Point& _x, Distance _r):
+            task(_task), x(_x), r(_r)
+        {}
+        
+        Iterator begin() {
+            return Iterator(task, x, r);
+        }
+        
+        Iterator end() {
+            return Iterator(task, x, r, END());
+        }
+        
+        // Предыдущая реализация
+        std::vector<Point> to_vector(const Point& x, Distance r) {
+            std::vector<Point> res;
+            res.push_back(x);
+            
+            if (r == 2) {  // 2-opt
+                for (int i1=1; i1 < task.N-1; ++i1) {
+                    for (int i2=i1+1; i2 < (i1 == 1 ? task.N-1 : task.N); ++i2) {
+                        int ia = x.indices[i1-1];
+                        int ib = x.indices[i1];
+                        int ic = x.indices[i2];
+                        int id = x.indices[(i2+1 == task.N ? 0 : i2+1)];
+                        
+                        if (task.edge_length(ia, ib) + task.edge_length(ic, id) - task.edge_length(ia, ic) - task.edge_length(ib, id) < 0){
+                            continue;
+                        }
+                        
+                        Point y = x;
+                        
+                        int i=i1, j=i2;
+                        while (i < j) {
+                            std::swap(y.indices[i], y.indices[j]);
+                            ++i; --j;
+                        }
+                        
+                        res.push_back(y);
+                    }
+                }
+            } else if (r == 3) {  // 3-opt
+                //...
+            }
+            
+            return res;
+        }
+    };
+    
+    
     
 private:
     int N;
@@ -60,7 +194,7 @@ public:
     
     
     
-    Score edge_length(int i1, int i2) {
+    Score edge_length(int i1, int i2) const {
         Vertex& v1 = vertices[i1];
         Vertex& v2 = vertices[i2];
         Score dx = v1.x - v2.x;
@@ -68,7 +202,7 @@ public:
         return sqrt(dx*dx + dy*dy);
     }
     
-    Score path_length(const Point& x) {
+    Score path_length(const Point& x) const {
         Score s = edge_length(x.indices[0], x.indices[N-1]);
         for (int i=1; i<N; ++i) {
             s += edge_length(x.indices[i], x.indices[i-1]);
@@ -78,49 +212,15 @@ public:
     
     
     
-    Score impossible_score() {
+    Score impossible_score() const {
         return -INFINITY;
     }
     
-    Score score(const Point& x) {
+    Score score(const Point& x) const {
         return -path_length(x);
     }
     
-    std::vector<Point> neighbourhood(const Point& x, Distance r) {
-        std::vector<Point> res;
-        res.push_back(x);
-        
-        if (r == 2) {  // 2-opt
-            for (int i1=1; i1<N-1; ++i1) {
-                for (int i2=i1+1; i2<(i1 == 1 ? N-1 : N); ++i2) {
-                    int ia = x.indices[i1-1];
-                    int ib = x.indices[i1];
-                    int ic = x.indices[i2];
-                    int id = x.indices[(i2+1 == N ? 0 : i2+1)];
-                    
-                    if (edge_length(ia, ib) + edge_length(ic, id) - edge_length(ia, ic) - edge_length(ib, id) < 0){
-                        continue;
-                    }
-                    
-                    Point y = x;
-                    
-                    int i=i1, j=i2;
-                    while (i < j) {
-                        std::swap(y.indices[i], y.indices[j]);
-                        ++i; --j;
-                    }
-                    
-                    res.push_back(y);
-                }
-            }
-        } else if (r == 3) {  // 3-opt
-            //...
-        }
-        
-        return res;
-    }
-    
-    Point random_point() {
+    Point random_point() const {
         Point x(*this);
         
         for (int i=1; i<N-1; ++i) {
@@ -135,7 +235,7 @@ public:
     
     
     
-    void print_point_info(const Point& x) {
+    void print_point_info(const Point& x) const {
         Point y = x;
         if (y.indices[1] > y.indices[N-1]) {
             int i=1, j=N-1;

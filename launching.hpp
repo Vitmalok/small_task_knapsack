@@ -21,10 +21,7 @@ void launch(int max_iterations = 100, int number_of_launches = 1, int detail_lev
         Solver solver(task);
         
         if (detail_level >= 3) {
-            while (solver.get_done_iterations() < max_iterations && !solver.get_tolerance_reached()) {
-                task.print_point_info(solver.point);
-                solver.solve(2, 0, 1);
-            }
+            solver.solve_detailed(2, 0, max_iterations);
         } else {
             solver.solve(2, 0, max_iterations);
         }
