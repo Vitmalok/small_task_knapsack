@@ -7,14 +7,10 @@ class Solver_local {
     Task& task;
     
     int done_iterations;
-    bool tolerance_reached;
     
 public:
-    int get_done_iterations() {
+    int get_done_iterations() const {
         return done_iterations;
-    }
-    int get_tolerance_reached() {
-        return tolerance_reached;
     }
     
     typename Task::Point point;
@@ -22,16 +18,15 @@ public:
     Solver_local(Task& _task):
         task(_task),
         done_iterations(0),
-        tolerance_reached(false),
         point(_task.random_point())
     {}
     
-    typename Task::Point solve(typename Task::Distance step, typename Task::Score tolerance, int max_iterations) {
+    typename Task::Point solve(typename Task::Distance step, int max_iterations) {
         typename Task::Score s = task.score(point);
         typename Task::Score s_prev = task.impossible_score();
         
         int it = 0;
-        while (it != max_iterations && (s - s_prev > tolerance || s == task.impossible_score())) {
+        while (it != max_iterations && (s > s_prev || s == task.impossible_score())) {
             s_prev = s;
             //std::cout << std::endl;
             //task.print_point_info(point);
@@ -46,17 +41,14 @@ public:
         }
         
         done_iterations += it;
-        if (s - s_prev <= tolerance) {
-            tolerance_reached = true;
-        }
         
         return point;
     }
     
-    typename Task::Point solve_detailed(typename Task::Distance step, typename Task::Score tolerance, int max_iterations) {
-        while (done_iterations < max_iterations && !tolerance_reached) {
+    typename Task::Point solve_detailed(typename Task::Distance step, int max_iterations) {
+        while (done_iterations < max_iterations) {
             task.print_point_info(point);
-            solve(step, tolerance, 1);
+            solve(step, 1);
         }
         
         return point;
@@ -72,7 +64,7 @@ class Solver_bnb {
     int done_iterations;
     
 public:
-    int get_done_iterations() {
+    int get_done_iterations() const {
         return done_iterations;
     }
     
@@ -85,7 +77,7 @@ public:
         point(_task.random_point())
     {}
     
-    typename Task::Point solve(typename Task::Distance step, typename Task::Score tolerance, int max_iterations) {
+    typename Task::Point solve(typename Task::Distance step, int max_iterations) {
         typename Task::Score s = task.score(point);
         typename Task::Score s_prev = task.impossible_score();
         
@@ -115,5 +107,7 @@ public:
             task.print_point_info(point);
             solve(step, tolerance, 1);
         }
+        
+        return point;
     }
 };*/

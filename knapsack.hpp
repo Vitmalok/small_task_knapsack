@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <iostream>
 #include <vector>
 
@@ -183,22 +184,65 @@ private:
     int N, W;
     Item* items;
     
+    double* costs;
+    int* sorted_indices;
+    
     
     
 public:
+    int get_N() const {
+        return N;
+    }
+    int get_W() const {
+        return W;
+    }
+    const Item* get_items() const {
+        return items;
+    }
+    
+    const double* get_costs() {
+        if (costs == nullptr) {
+            costs = new double[N];
+            for (int i=0; i<N; ++i) {
+                costs[i] = (double)items[i].score / items[i].weight;
+            }
+        }
+        
+        return costs;
+    }
+    const int* get_sorted_indices() {
+        if (sorted_indices == nullptr) {
+            sorted_indices = new int[N];
+            for (int i=0; i<N; ++i) {
+                sorted_indices[i] = i;
+            }
+            std::sort(sorted_indices, sorted_indices+N, [&](int i, int j) {return costs[i] - costs[j];});
+        }
+        
+        return sorted_indices;
+    }
+    
+    
+    
     Task():
-        N(0), W(0), items(nullptr)
+        N(0), W(0), items(nullptr), sorted_indices(nullptr)
     {};
     Task(int _N, int _W, Item* _items):
-        N(_N), W(_W), items(_items)
+        N(_N), W(_W), items(_items), sorted_indices(nullptr)
     {};
     
     ~Task() {
         delete[] items;
+        
+        delete[] costs;
+        delete[] sorted_indices;
     }
     
     void load(std::istream& is) {
         delete[] items;
+        
+        delete[] costs;
+        delete[] sorted_indices;
         
         is >> N >> W;
         

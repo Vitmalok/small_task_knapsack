@@ -170,6 +170,15 @@ private:
     Vertex* vertices;
 
 public:
+    int get_N() const {
+        return N;
+    }
+    const Vertex* get_vertices() const {
+        return vertices;
+    }
+    
+    
+    
     Task():
         N(0), vertices(nullptr)
     {};

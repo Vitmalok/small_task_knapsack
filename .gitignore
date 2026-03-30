@@ -1,4 +1,6 @@
 /.vscode/
 /knapsack_data/
 /tsp_data/
+/helper.cpp
+/helper
 /main

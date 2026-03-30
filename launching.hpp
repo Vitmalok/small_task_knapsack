@@ -21,9 +21,9 @@ void launch(typename Task::Distance step, int max_iterations = 100, int number_o
         Solver solver(task);
         
         if (detail_level >= 3) {
-            solver.solve_detailed(step, 0, max_iterations);
+            solver.solve_detailed(step, max_iterations);
         } else {
-            solver.solve(step, 0, max_iterations);
+            solver.solve(step, max_iterations);
         }
         
         if (detail_level >= 2) {
