@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+#include <utility>
 
 #include "randint.hpp"
 
@@ -12,13 +13,6 @@ namespace knapsack {
 
 class Task {
 public:
-    struct Item {
-        int score;
-        int weight;
-    };
-    
-    
-    
     class Point {
         friend Task;
         
@@ -34,13 +28,20 @@ public:
     
     
     
+    struct Item {
+        Score score;
+        int weight;
+    };
+    
+    
+    
     class Neighbourhood {
         const Task& task;
         const Point& x;
         Distance r;
-    public:
-        struct END {};
         
+        struct END {};
+    public:
         class Iterator {
             friend Neighbourhood;
             
@@ -56,6 +57,11 @@ public:
             Score s;  // Суммарный счёт, без учёта переполнения рюкзака
             int w;
             
+            Iterator(const Task& _task, const Point& _x, Distance _r):
+                task(_task), x(_x), r(_r), end(false),
+                k(0), ii(-1), indices(nullptr),
+                y(x), s(task.score(x, false)), w(task.weight(x))
+            {}
             Iterator(const Task& _task, const Point& _x, Distance _r, END):
                 task(_task), x(_x), r(_r), end(true),
                 k(_r), ii(-1), indices(nullptr),
@@ -74,20 +80,15 @@ public:
             }
             
         public:
-            Iterator(const Task& _task, const Point& _x, Distance _r):
-                task(_task), x(_x), r(_r), end(false),
-                k(0), ii(-1), indices(nullptr),
-                y(x), s(task.score(x, false)), w(task.weight(x))
-            {}
             ~Iterator() {
                 delete[] indices;
             }
             
-            std::pair<const Point&, Score> operator*() {
+            std::pair<const Point&, Score> operator*() const {
                 return {y, (w > task.W ? task.impossible_score() : s)};
             }
             
-            bool operator!=(const Iterator& other) {
+            bool operator!=(const Iterator& other) const {
                 return !(end && other.end);
             }
             
@@ -134,11 +135,10 @@ public:
             task(_task), x(_x), r(_r)
         {}
         
-        Iterator begin() {
+        Iterator begin() const {
             return Iterator(task, x, r);
         }
-        
-        Iterator end() {
+        Iterator end() const {
             return Iterator(task, x, r, END());
         }
         
@@ -180,16 +180,150 @@ public:
     
     
     
+    class Subset {
+        // friend Task;
+        
+        Task& task;
+        int size;
+        const int* indices;
+        
+        Score s;  // Суммарный счёт, без учёта переполнения рюкзака
+        int w;
+        
+        struct END {};
+        
+        Subset(Task& _task, int _size, int* _indices, int _s, int _w):
+            task(_task), size(_size), indices(_indices), s(_s), w(_w)
+        {}
+        
+    public:
+        class Iterator {
+            friend Subset;
+            
+            const Subset& range;
+            int size;
+            int* indices;
+            bool end;
+            
+            Iterator(const Subset& _range, int _i):
+                range(_range), size(_range.size+1), end(false)
+            {
+                indices = new int[size];
+                for (int i=0; i < size-1; ++i) {
+                    indices[i] = _range.indices[i];
+                }
+                indices[size-1] = _i;
+            }
+            Iterator(const Subset& _range, int _i, END):
+                range(_range), size(0), indices(nullptr), end(true)
+            {}
+        public:
+            Iterator(const Iterator& other):
+                range(other.range), size(other.size), end(other.end)
+            {
+                indices = new int[size];
+                for (int i=0; i<size; ++i) {
+                    indices[i] = other.indices[i];
+                }
+            }
+            
+            Iterator(Iterator&& other):
+                range(other.range), size(other.size),
+                indices(std::exchange(other.indices, nullptr)),
+                end(other.end)
+            {}
+            
+            ~Iterator() {
+                delete[] indices;
+            }
+            
+            const Subset operator*() const {
+                Item item = range.task.items[range.task.get_sorted_indices()[indices[size-1]]];
+                return Subset(range.task, size, indices,
+                    range.s + item.score, range.w + item.weight
+                );
+            }
+            
+            bool operator!=(const Iterator& other) const {
+                return !(end && other.end);
+            }
+            
+            const Iterator& operator++() {
+                if (size) {
+                    ++indices[size-1];
+                    end = indices[size-1] >= range.task.N;
+                } else {
+                    end = true;
+                }
+                return *this;
+            }
+        };
+        
+        
+        
+        Subset(const Subset& other):
+            task(other.task), size(other.size), indices(other.indices), s(other.s), w(other.w)
+        {}
+        
+        Subset(Task& _task):
+            task(_task), size(0), indices(nullptr), s(), w()
+        {}
+        
+        
+        
+        Iterator begin() const {
+            if (size && indices[size-1] == task.N-1) {
+                return Iterator(*this, 0, END());
+            }
+            return Iterator(*this, (size ? indices[size-1]+1 : 0));
+        }
+        Iterator end() const {
+            return Iterator(*this, 0, END());
+        }
+        
+        Point get_center() const {
+            Point res(task);
+            for (int i=0; i<size; ++i) {
+                res.bits[task.get_sorted_indices()[indices[i]]] = true;
+            }
+            return res;
+        }
+        
+        Score get_center_score() const {
+            if (w > task.W) {
+                return impossible_score();
+            }
+            return s;
+        }
+        
+        bool is_desperate(Score best_score) const {
+            if (w > task.W) {
+                return true;
+            }
+            return false;
+        }
+    };
+    
+    
+    
 private:
     int N, W;
     Item* items;
     
     double* costs;
     int* sorted_indices;
+    long long* pref_scores;
+    long long* pref_weights;
     
     
     
 public:
+    static Score impossible_score() {
+        return -1000000000;
+    }
+    
+    
+    
     int get_N() const {
         return N;
     }
@@ -207,28 +341,61 @@ public:
                 costs[i] = (double)items[i].score / items[i].weight;
             }
         }
-        
         return costs;
     }
     const int* get_sorted_indices() {
         if (sorted_indices == nullptr) {
+            get_costs();
             sorted_indices = new int[N];
             for (int i=0; i<N; ++i) {
                 sorted_indices[i] = i;
             }
-            std::sort(sorted_indices, sorted_indices+N, [&](int i, int j) {return costs[i] - costs[j];});
+            std::sort(sorted_indices, sorted_indices+N, [this](int i, int j) {return costs[i] > costs[j];});
         }
-        
         return sorted_indices;
+    }
+    const long long* get_pref_scores() {
+        if (pref_scores == nullptr) {
+            get_sorted_indices();
+            pref_scores = new long long[N+1];
+            long long a = 0;
+            pref_scores[0] = 0;
+            for (int i=0; i<N; ++i) {
+                a += items[sorted_indices[i]].score;
+                pref_scores[i+1] = a;
+            }
+        }
+        return pref_scores;
+    }
+    const long long* get_pref_weights() {
+        if (pref_weights == nullptr) {
+            get_sorted_indices();
+            pref_weights = new long long[N+1];
+            long long a = 0;
+            pref_weights[0] = 0;
+            for (int i=0; i<N; ++i) {
+                a += items[sorted_indices[i]].weight;
+                pref_weights[i+1] = a;
+            }
+        }
+        return pref_weights;
     }
     
     
     
     Task():
-        N(0), W(0), items(nullptr), sorted_indices(nullptr)
+        N(0), W(0), items(nullptr),
+        costs(nullptr),
+        sorted_indices(nullptr),
+        pref_scores(nullptr),
+        pref_weights(nullptr)
     {};
     Task(int _N, int _W, Item* _items):
-        N(_N), W(_W), items(_items), sorted_indices(nullptr)
+        N(_N), W(_W), items(_items),
+        costs(nullptr),
+        sorted_indices(nullptr),
+        pref_scores(nullptr),
+        pref_weights(nullptr)
     {};
     
     ~Task() {
@@ -236,6 +403,8 @@ public:
         
         delete[] costs;
         delete[] sorted_indices;
+        delete[] pref_scores;
+        delete[] pref_weights;
     }
     
     void load(std::istream& is) {
@@ -243,6 +412,8 @@ public:
         
         delete[] costs;
         delete[] sorted_indices;
+        delete[] pref_scores;
+        delete[] pref_weights;
         
         is >> N >> W;
         
@@ -254,12 +425,8 @@ public:
     
     
     
-    Score impossible_score() const {
-        return -1000000000;
-    }
-    
     Score score(const Point& x, bool check_impossible=true) const {
-        int s = 0;
+        Score s = 0;
         int w = 0;
         for (int i=0; i<N; ++i) {
             if (x.bits[i]) {
@@ -295,6 +462,10 @@ public:
         return x;
     }
     
+    Subset whole_set() {
+        return Subset(*this);
+    }
+    
     
     
     int weight(const Point& x) const {
@@ -307,12 +478,12 @@ public:
         return w;
     }
     
-    void print_point_info(const Point& x) const {
+    void print_point_info(std::ostream& os, const Point& x) const {
         for (int i=0; i<N; ++i) {
-            std::cout << x.bits[i];
+            os << x.bits[i];
         }
-        std::cout << std::endl;
-        std::cout << "score: " << score(x) << ", weight: " << weight(x) << std::endl;
+        os << std::endl;
+        os << "score: " << score(x) << ", weight: " << weight(x) << std::endl;
     }
 };
 

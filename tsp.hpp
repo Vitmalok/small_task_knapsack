@@ -55,23 +55,23 @@ public:
             
             Point y;
             
-            Iterator(const Task& _task, const Point& _x, Distance _r, END):
-                task(_task), x(_x), r(_r), end(true),
-                i1(_task.N-1), i2(task.N),
-                y()
-            {}
-        public:
             Iterator(const Task& _task, const Point& _x, Distance _r):
                 task(_task), x(_x), r(_r), end(false),
                 i1(1), i2(2),
                 y(x)
             {}
+            Iterator(const Task& _task, const Point& _x, Distance _r, END):
+                task(_task), x(_x), r(_r), end(true),
+                i1(_task.N-1), i2(task.N),
+                y()
+            {}
             
-            std::pair<const Point&, Score> operator*() {
+        public:
+            std::pair<const Point&, Score> operator*() const {
                 return {y, task.score(y)};
             }
             
-            bool operator!=(const Iterator& other) {
+            bool operator!=(const Iterator& other) const {
                 return !(end && other.end);
             }
             
@@ -119,11 +119,10 @@ public:
             task(_task), x(_x), r(_r)
         {}
         
-        Iterator begin() {
+        Iterator begin() const {
             return Iterator(task, x, r);
         }
-        
-        Iterator end() {
+        Iterator end() const {
             return Iterator(task, x, r, END());
         }
         
@@ -170,6 +169,12 @@ private:
     Vertex* vertices;
 
 public:
+    static Score impossible_score() {
+        return -INFINITY;
+    }
+    
+    
+    
     int get_N() const {
         return N;
     }
@@ -221,10 +226,6 @@ public:
     
     
     
-    Score impossible_score() const {
-        return -INFINITY;
-    }
-    
     Score score(const Point& x) const {
         return -path_length(x);
     }
@@ -244,7 +245,7 @@ public:
     
     
     
-    void print_point_info(const Point& x) const {
+    void print_point_info(std::ostream& os, const Point& x) const {
         Point y = x;
         if (y.indices[1] > y.indices[N-1]) {
             int i=1, j=N-1;
@@ -255,11 +256,11 @@ public:
         }
         
         for (int i=0; i<N-1; ++i) {
-            std::cout << y.indices[i] << " ";
+            os << y.indices[i] << " ";
         }
-        std::cout << y.indices[N-1] << std::endl;
+        os << y.indices[N-1] << std::endl;
         
-        std::cout << "length: " << path_length(y) << std::endl;
+        os << "length: " << path_length(y) << std::endl;
     }
 };
 

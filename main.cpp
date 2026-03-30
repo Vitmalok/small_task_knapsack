@@ -13,25 +13,28 @@
 
 
 
-const char* SHORT_OPTS = "d:i:n:s:";
+const char* SHORT_OPTS = "b:d:i:n:s:";
 
-const std::map<std::string, std::function<void(double, int, int, int)>> launchers {
-    {"knapsack", launch<knapsack::Task, Solver_local<knapsack::Task>>},
-    {"tsp", launch<tsp::Task, Solver_local<tsp::Task>>},
+typedef std::function<void(std::istream&, std::ostream&, double, double, int, int, int)> Launcher;
+
+const std::map<std::pair<std::string, std::string>, Launcher> launchers {
+    {{"knapsack", "local"}, launch<knapsack::Task, Solver_local<knapsack::Task>>},
+    {{"knapsack", "bnb"}, launch<knapsack::Task, Solver_bnb<knapsack::Task>>},
+    {{"tsp", "local"}, launch<tsp::Task, Solver_local<tsp::Task>>},
 };
 
 
 
 void print_usage_str(std::ostream& os, const char* main_name) {
-    os << "Usage: " << main_name << " <task_name> [-d <detail_level>] [-i <max_iterations>] [-n <number_of_launches>] [-s <step>]" << std::endl;
+    os << "Usage: " << main_name << " <task_name> <solver_name> [-b <best_score>] [-d <detail_level>] [-i <max_iterations>] [-n <number_of_launches>] [-s <step>]" << std::endl;
 }
-void print_available_tasks(std::ostream& os) {
-    os << "Available tasks: [";
+void print_available_task_solver_combinations(std::ostream& os) {
+    os << "Available task and solver combinations: [";
     for (decltype(launchers)::const_iterator it = launchers.begin(); it != launchers.end(); ++it) {
         if (it != launchers.begin()) {
             os << " | ";
         }
-        os << (*it).first;
+        os << (*it).first.first << " " << (*it).first.second;
     }
     os << "]" << std::endl;
 }
@@ -44,20 +47,27 @@ int main(int argc, char* argv[]) {
         print_usage_str(std::cerr, argv[0]);
         return -1;
     }
-    
-    std::string task_name = argv[1];
-    decltype(launchers)::const_iterator it = launchers.find(task_name);
-    
-    if (it == launchers.end()) {
-        std::cerr << "No task with name \"" << task_name << "\"" << std::endl;
-        print_available_tasks(std::cerr);
+    if (argc < 3) {
+        std::cerr << "Expected solver name" << std::endl;
+        print_usage_str(std::cerr, argv[0]);
         return -1;
     }
     
-    const std::function<void(double, int, int, int)> launcher = (*it).second;
+    std::string task_name = argv[1];
+    std::string solver_name = argv[2];
+    decltype(launchers)::const_iterator it = launchers.find({task_name, solver_name});
+    
+    if (it == launchers.end()) {
+        std::cerr << "task and solver combination \"" << task_name << " " << solver_name << "\" is not supported" << std::endl;
+        print_available_task_solver_combinations(std::cerr);
+        return -1;
+    }
+    
+    const Launcher launcher = (*it).second;
     
     
     
+    double best_score = -INFINITY;
     int detail_level = 0;
     int max_iterations = 100;
     int number_of_launches = 1;
@@ -68,6 +78,9 @@ int main(int argc, char* argv[]) {
     
     while ((opt = getopt(argc, argv, SHORT_OPTS)) != -1) {
         switch(opt) {
+        case 'b':
+            best_score = atof(optarg);
+            break;
         case 'd':
             detail_level = atoi(optarg);
             break;
@@ -89,7 +102,7 @@ int main(int argc, char* argv[]) {
     
     
     
-    launcher(step, max_iterations, number_of_launches, detail_level);
+    launcher(std::cin, std::cout, step, best_score, max_iterations, number_of_launches, detail_level);
     
     
     
