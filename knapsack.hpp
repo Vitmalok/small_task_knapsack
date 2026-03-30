@@ -297,9 +297,18 @@ public:
         }
         
         bool is_desperate(Score best_score) const {
-            if (w > task.W) {
+            if (w > task.W)
                 return true;
-            }
+            
+            if (s > best_score || size == 0)
+                return false;
+            
+            if (indices[size-1] == task.N-1)
+                return true;
+            
+            if (task.costs[task.sorted_indices[indices[size-1]+1]]*(task.W-w) + s < best_score)
+                return true;
+            
             return false;
         }
     };
@@ -463,6 +472,10 @@ public:
     }
     
     Subset whole_set() {
+        get_costs();
+        get_sorted_indices();
+        get_pref_scores();
+        get_pref_weights();
         return Subset(*this);
     }
     
